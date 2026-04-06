@@ -3,7 +3,7 @@ const API_BASE = "http://localhost:4000/api/v1";
 function getToken(): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(/(?:^|;\s*)access_token=([^;]*)/);
-  return match ? match[1] : null;
+  return match && match[1] ? match[1] : null;
 }
 
 export async function apiFetch<T = any>(
