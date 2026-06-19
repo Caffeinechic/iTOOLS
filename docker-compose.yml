@@ -1,34 +1,46 @@
-version: '3.8'
 services:
-  postgres:
-    image: postgres:15
-    container_name: ecos_postgres
-    environment:
-      POSTGRES_USER: ecosadmin
-      POSTGRES_PASSWORD: ecospassword
-      POSTGRES_DB: ecosdb
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7
-    container_name: ecos_redis
-    ports:
-      - "6379:6379"
-
   mongo:
     image: mongo:6
-    container_name: ecos_mongo
+    container_name: itools_mongo
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ecosmongo
-      MONGO_INITDB_ROOT_PASSWORD: ecosmongopassword
+      MONGO_INITDB_ROOT_USERNAME: itoolsmongo
+      MONGO_INITDB_ROOT_PASSWORD: itoolsmongopassword
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo_data:/data/db
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: itools_backend
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: "4000"
+      MONGO_URI: mongodb://itoolsmongo:itoolsmongopassword@mongo:27017/itools?authSource=admin
+      JWT_SECRET: supersecretjwtkeyforitools
+      NODE_ENV: production
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+        NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
+    container_name: itools_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
   mongo_data:
