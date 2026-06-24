@@ -1,14 +1,13 @@
-import os
-from dotenv import load_dotenv
+from app.settings import get_setting
 
-load_dotenv()
 
-DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD", "admin123")
+def get_default_password() -> str:
+    return get_setting("DEFAULT_PASSWORD", "admin123")
 
 
 def password_hash(password: str | None = None) -> str:
     """Store the shared default password for all EC accounts."""
-    return (password or DEFAULT_PASSWORD).strip()
+    return (password or get_default_password()).strip()
 
 
 def verify_password(stored_hash: str | None, password: str | None) -> bool:
@@ -17,6 +16,6 @@ def verify_password(stored_hash: str | None, password: str | None) -> bool:
     password = password.strip()
     if not password:
         return False
-    if password == DEFAULT_PASSWORD:
+    if password == get_default_password():
         return True
     return stored_hash is not None and stored_hash.strip() == password

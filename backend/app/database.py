@@ -16,6 +16,14 @@ async def connect_db() -> None:
     _db = _client.get_default_database()
     await _db.command("ping")
     print(f"MongoDB connected: {_db.name}")
+    from app.settings import bootstrap_runtime_settings, load_settings_cache
+
+    await bootstrap_runtime_settings(_db)
+    await load_settings_cache(_db)
+    print("System settings loaded into runtime")
+    user_count = await _db.users.count_documents({})
+    if user_count == 0:
+        print("WARNING: No users in database. Run: python seed.py  (Docker: docker compose exec backend python seed.py)")
     await _sync_default_passwords()
 
 
@@ -159,4 +167,22 @@ async def serialize_notification(doc: dict[str, Any] | None) -> dict[str, Any] |
         sender = await find_by_id("users", sender_id)
         if sender:
             out["sender"] = {"id": sender["_id"], "name": sender.get("name")}
+    return out
+
+
+async def serialize_communication(doc: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not doc:
+        return None
+    out = serialize_doc(doc)
+    assert out is not None
+    author_id = out.get("authorId")
+    committee_id = out.get("committeeId")
+    if author_id:
+        author = await find_by_id("users", author_id)
+        if author:
+            out["author"] = {"id": author["_id"], "name": author.get("name"), "email": author.get("email")}
+    if committee_id:
+        committee = await find_by_id("committees", committee_id)
+        if committee:
+            out["committee"] = {"id": committee["_id"], "name": committee.get("name")}
     return out

@@ -6,7 +6,7 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.config import JWT_SECRET
+from app.settings import get_setting
 
 security = HTTPBearer(auto_error=False)
 
@@ -27,7 +27,7 @@ def create_access_token(user: AuthUser) -> str:
         "tier": user.tier,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    return jwt.encode(payload, get_setting("JWT_SECRET", "default_secret"), algorithm="HS256")
 
 
 def create_refresh_token(user_id: str) -> str:
@@ -35,12 +35,12 @@ def create_refresh_token(user_id: str) -> str:
         "id": user_id,
         "exp": datetime.now(timezone.utc) + timedelta(days=7),
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    return jwt.encode(payload, get_setting("JWT_SECRET", "default_secret"), algorithm="HS256")
 
 
 def decode_token(token: str) -> AuthUser:
     try:
-        data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        data = jwt.decode(token, get_setting("JWT_SECRET", "default_secret"), algorithms=["HS256"])
         return AuthUser(
             id=data["id"],
             roleId=data.get("roleId"),

@@ -10,8 +10,11 @@ import {
   Bell,
   LogOut,
   Menu,
-  Shield,
   ChevronLeft,
+  ChevronRight,
+  Megaphone,
+  Landmark,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,88 +31,154 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { BrandLogo } from "@/components/auth/brand-logo";
+import { DashboardBreadcrumb } from "@/components/dashboard/breadcrumb";
+import { committeeShortName } from "@/lib/committees";
 import { useAuthStore, useNotificationStore } from "@/lib/store";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/pipelines", label: "Pipelines", icon: Columns3 },
+  { href: "/dashboard/communications", label: "Communications", icon: Megaphone },
+  { href: "/dashboard/budget", label: "Budget", icon: Landmark },
   { href: "/dashboard/members", label: "Members", icon: Users },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
 ];
 
-function SidebarContent({ collapsed, onToggle }: { collapsed: boolean; onToggle?: () => void }) {
+function NavLink({
+  item,
+  isActive,
+  collapsed,
+}: {
+  item: (typeof navItems)[0];
+  isActive: boolean;
+  collapsed: boolean;
+}) {
+  const link = (
+    <Link
+      href={item.href}
+      className={`group relative flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+        collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5"
+      } ${
+        isActive
+          ? "bg-white/15 text-white shadow-sm"
+          : "text-white/55 hover:text-white hover:bg-white/10"
+      }`}
+    >
+      {isActive && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-white rounded-r-full" />
+      )}
+      <item.icon
+        className={`w-[18px] h-[18px] shrink-0 transition-transform duration-200 ${
+          isActive ? "scale-105" : "group-hover:scale-105"
+        }`}
+      />
+      {!collapsed && (
+        <>
+          <span className="flex-1">{item.label}</span>
+          {item.label === "Notifications" && <NotificationBadge />}
+        </>
+      )}
+    </Link>
+  );
+
+  if (collapsed) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent
+          side="right"
+          sideOffset={12}
+          className="bg-[var(--itools-navy-deep)] text-white border-white/10 font-medium"
+        >
+          {item.label}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return link;
+}
+
+function SidebarContent({
+  collapsed,
+  onToggle,
+  userTier,
+  committeeName,
+  roleName,
+}: {
+  collapsed: boolean;
+  onToggle?: () => void;
+  userTier?: string;
+  committeeName?: string;
+  roleName?: string;
+}) {
   const pathname = usePathname();
+  const items = [
+    ...navItems,
+    ...(userTier === "MASTER"
+      ? [{ href: "/dashboard/settings", label: "System", icon: Settings }]
+      : []),
+  ];
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-6 shrink-0">
-        <div className="w-10 h-10 bg-[#0f172a] rounded-[14px] flex items-center justify-center shadow-md shrink-0">
-          <Shield className="w-5 h-5 text-white" />
-        </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <h2 className="text-base font-extrabold text-slate-900 tracking-tight">iTools</h2>
-            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Control Panel</p>
-          </div>
-        )}
+    <div className="flex flex-col h-full bg-gradient-to-b from-[#1a2744] to-[var(--itools-navy)] text-white shadow-xl">
+      <div
+        className={`flex items-center shrink-0 border-b border-white/8 ${
+          collapsed ? "justify-center py-4" : "gap-3 px-4 py-4"
+        }`}
+      >
+        <BrandLogo size={collapsed ? "sm" : "md"} inverted className={collapsed ? "!w-10 !h-8" : ""} />
         {onToggle && !collapsed && (
           <Button
             variant="ghost"
             size="icon"
-            className="ml-auto h-7 w-7 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+            className="ml-auto h-8 w-8 rounded-lg text-white/50 hover:text-white hover:bg-white/10"
             onClick={onToggle}
+            aria-label="Collapse sidebar"
           >
-            <ChevronLeft className="h-4 h-4" />
+            <ChevronLeft className="h-4 w-4" />
           </Button>
         )}
       </div>
 
-      <Separator className="bg-slate-100" />
-
-      {/* Nav Link List */}
-      <ScrollArea className="flex-1 px-3 py-6">
-        <nav className="space-y-1.5">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-            return (
-              <TooltipProvider key={item.href} delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={item.href}
-                      className={`flex items-center gap-3.5 px-4 py-3 rounded-full text-sm font-semibold transition-all duration-200 group ${
-                        isActive
-                          ? "border border-slate-900 text-slate-900 bg-white shadow-sm"
-                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent"
-                      }`}
-                    >
-                      <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-slate-900" : "text-slate-400 group-hover:text-slate-700"}`} />
-                      {!collapsed && <span className="tracking-wide">{item.label}</span>}
-                      {!collapsed && item.label === "Notifications" && <NotificationBadge />}
-                    </Link>
-                  </TooltipTrigger>
-                  {collapsed && (
-                    <TooltipContent side="right" className="bg-slate-900 text-white border-slate-800 rounded-lg text-xs">
-                      {item.label}
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </TooltipProvider>
-            );
-          })}
-        </nav>
+      <ScrollArea className="flex-1 px-2.5 py-3">
+        <TooltipProvider>
+          <nav className="space-y-1">
+            {items.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+              return (
+                <NavLink key={item.href} item={item} isActive={isActive} collapsed={collapsed} />
+              );
+            })}
+          </nav>
+        </TooltipProvider>
       </ScrollArea>
 
-      <Separator className="bg-slate-100" />
- 
-      {/* Footer Info Box */}
+      {collapsed && onToggle && (
+        <div className="px-2.5 pb-2 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-full h-9 rounded-xl text-white/50 hover:text-white hover:bg-white/10"
+            onClick={onToggle}
+            aria-label="Expand sidebar"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {!collapsed && (
-        <div className="p-4 shrink-0">
-          <div className="rounded-[18px] bg-slate-50 border border-slate-100 p-3.5 text-center">
-            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Student Branch</p>
-            <p className="text-xs text-slate-700 font-extrabold mt-0.5">VITB 2025-2026</p>
+        <div className="p-3 shrink-0 border-t border-white/8">
+          <div className="rounded-xl bg-white/6 border border-white/10 px-3 py-3 backdrop-blur-sm">
+            <p className="text-[10px] text-white/45 font-medium uppercase tracking-wider leading-relaxed">
+              {committeeName || "IEEE Student Branch"}
+            </p>
+            <p className="text-xs text-white/90 font-semibold mt-1">{roleName || "Executive Committee"}</p>
           </div>
         </div>
       )}
@@ -121,7 +190,7 @@ function NotificationBadge() {
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   if (!unreadCount) return null;
   return (
-    <Badge variant="destructive" className="ml-auto h-5 min-w-[20px] text-[10px] px-1.5 bg-red-500 hover:bg-red-500 font-bold">
+    <Badge className="ml-auto h-5 min-w-[20px] text-[10px] px-1.5 bg-white/20 text-white hover:bg-white/20 border-0">
       {unreadCount > 9 ? "9+" : unreadCount}
     </Badge>
   );
@@ -139,128 +208,149 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [fetchUser, fetchUnreadCount]);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
+    if (!loading && !user) router.push("/login");
   }, [loading, user, router]);
 
   useEffect(() => {
     if (user) {
       const socket = connectSocket(user.id, user.committeeId);
       socket.on("notification:new", () => fetchUnreadCount());
-      return () => {
-        disconnectSocket();
-      };
+      return () => disconnectSocket();
     }
   }, [user, fetchUnreadCount]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f4f7f9] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--itools-surface)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Loading iTools...</p>
+          <div className="w-9 h-9 border-2 border-[var(--itools-navy)] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[var(--itools-muted)] font-medium">Loading workspace…</p>
         </div>
       </div>
     );
   }
 
-  const initials = user?.name
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || "?";
+  const initials =
+    user?.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "?";
+
+  const committeeLabel = user?.committee
+    ? committeeShortName({ id: "", name: user.committee.name })
+    : "IEEE Student Branch";
 
   return (
-    <div className="min-h-screen bg-[#f4f7f9] flex">
-      {/* Desktop Sidebar (Floating Card) */}
+    <div className="min-h-screen bg-[var(--itools-surface)] flex">
       <aside
-        className={`hidden lg:flex flex-col transition-all duration-300 shrink-0 sticky top-0 h-screen ${
-          collapsed ? "w-[100px]" : "w-[260px]"
+        className={`hidden lg:flex flex-col shrink-0 sticky top-0 h-screen transition-all duration-300 ease-in-out z-40 ${
+          collapsed ? "w-[68px]" : "w-[248px]"
         }`}
       >
-        <div className="m-4 mr-2 flex-1 bg-white border border-slate-200/50 rounded-[28px] shadow-sm overflow-hidden">
-          <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
-        </div>
+        <SidebarContent
+          collapsed={collapsed}
+          onToggle={() => setCollapsed(!collapsed)}
+          userTier={user?.role?.tier}
+          committeeName={committeeLabel}
+          roleName={user?.role?.name}
+        />
       </aside>
- 
-      {/* Main Area */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        {/* Top Header Bar */}
-        <header className="h-16 bg-transparent flex items-center justify-between px-6 lg:px-8 mt-2 z-30 shrink-0">
-          <div className="flex items-center gap-3">
-            {/* Mobile hamburger */}
+
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+        <header className="h-14 shrink-0 flex items-center justify-between px-4 lg:px-6 border-b border-[var(--itools-border)] bg-white/90 backdrop-blur-md sticky top-0 z-30">
+          <div className="flex items-center gap-2">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9 rounded-full text-slate-500 hover:bg-white hover:text-slate-900 border border-slate-100">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden h-9 w-9 text-[var(--itools-muted)]"
+                >
                   <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[260px] p-0 bg-white border-slate-200/50">
-                <SidebarContent collapsed={false} />
+              <SheetContent side="left" className="w-[248px] p-0 border-0">
+                <SidebarContent
+                  collapsed={false}
+                  userTier={user?.role?.tier}
+                  committeeName={committeeLabel}
+                  roleName={user?.role?.name}
+                />
               </SheetContent>
             </Sheet>
 
-            {/* Collapse toggle for desktop */}
             {collapsed && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden lg:flex h-9 w-9 rounded-full text-slate-400 hover:text-slate-900 hover:bg-white border border-slate-250/20"
+                className="hidden lg:flex h-9 w-9 text-[var(--itools-muted)]"
                 onClick={() => setCollapsed(false)}
               >
                 <Menu className="h-4 w-4" />
               </Button>
             )}
+
+            <div className="hidden sm:block">
+              <p className="text-sm font-semibold text-[var(--itools-navy-deep)] font-display">
+                {user?.committee?.name || "Committee workspace"}
+              </p>
+              <p className="text-[11px] text-[var(--itools-muted)]">{user?.role?.name}</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3.5">
-            {/* Notification bell */}
+          <div className="flex items-center gap-2">
             <Link href="/dashboard/notifications">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-400 hover:text-slate-900 hover:bg-white border border-slate-250/20 relative shadow-sm">
-                <Bell className="h-4.5 w-4.5" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-lg text-[var(--itools-muted)] hover:text-[var(--itools-navy)] relative"
+              >
+                <Bell className="h-4 w-4" />
                 <NotificationDot />
               </Button>
             </Link>
 
-            {/* User dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-10 gap-2 px-3 rounded-full bg-white hover:bg-slate-50 border border-slate-200/80 shadow-sm text-slate-700 hover:text-slate-900">
-                  <Avatar className="h-7 w-7 border border-slate-100">
-                    <AvatarFallback className="bg-slate-100 text-slate-800 text-[10px] font-extrabold">
+                <Button
+                  variant="ghost"
+                  className="h-9 gap-2 px-2 rounded-lg hover:bg-[var(--itools-surface)]"
+                >
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-[var(--itools-navy)] text-white text-[10px] font-semibold">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  {user?.name && <span className="hidden sm:inline text-xs font-bold tracking-wide text-slate-800">{user.name}</span>}
+                  <span className="hidden md:inline text-sm font-medium text-[var(--itools-navy-deep)]">
+                    {user?.name}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-white border-slate-200/80 rounded-2xl shadow-lg p-1">
-                <DropdownMenuLabel className="text-slate-800 px-3 py-2.5">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold">{user?.name}</span>
-                    <span className="text-xs text-slate-400 font-normal mt-0.5">{user?.email}</span>
-                    {user?.role && (
-                      <Badge variant="outline" className="mt-1.5 w-fit text-[9px] border-slate-200 text-slate-600 bg-slate-50">
-                        {user.role.name}
-                      </Badge>
-                    )}
-                  </div>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                <DropdownMenuLabel>
+                  <p className="text-sm font-semibold">{user?.name}</p>
+                  <p className="text-xs text-[var(--itools-muted)] font-normal">{user?.email}</p>
+                  {user?.role && (
+                    <Badge variant="outline" className="mt-2 text-[10px]">
+                      {user.role.name}
+                    </Badge>
+                  )}
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-100" />
-                <DropdownMenuItem className="text-slate-600 hover:text-slate-950 px-3 py-2 cursor-pointer rounded-xl font-medium" onClick={logout}>
-                  <LogOut className="h-4 w-4 mr-2.5" />
-                  Sign Out
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout} className="cursor-pointer rounded-lg">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="p-6 lg:p-8 max-w-[1600px] mx-auto w-full h-full">
+          <div className="p-5 lg:p-8 max-w-[1400px] mx-auto w-full">
+            <DashboardBreadcrumb />
             {children}
           </div>
         </main>
@@ -273,6 +363,6 @@ function NotificationDot() {
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   if (!unreadCount) return null;
   return (
-    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white" />
+    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
   );
 }

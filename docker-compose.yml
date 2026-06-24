@@ -16,10 +16,11 @@ services:
     container_name: itools_backend
     ports:
       - "4000:4000"
+    env_file:
+      - ./backend/.env
     environment:
       PORT: "4000"
       MONGO_URI: mongodb://itoolsmongo:itoolsmongopassword@mongo:27017/itools?authSource=admin
-      JWT_SECRET: supersecretjwtkeyforitools
       NODE_ENV: production
     depends_on:
       - mongo

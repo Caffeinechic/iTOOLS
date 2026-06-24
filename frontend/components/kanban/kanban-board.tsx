@@ -21,13 +21,13 @@ import { useDroppable } from "@dnd-kit/core";
 
 // Define the columns based on the valid statuses
 export const COLUMNS = [
-  { id: "TODO", title: "To Do", bg: "bg-zinc-50 border-zinc-200" },
-  { id: "IN_PROGRESS", title: "In Progress", bg: "bg-blue-50/50 border-blue-100" },
-  { id: "REVIEW", title: "Review", bg: "bg-purple-50/50 border-purple-100" },
-  { id: "DONE", title: "Done", bg: "bg-emerald-50/50 border-emerald-100" }
+  { id: "TODO", title: "To Do", bg: "bg-[var(--itools-surface)] border-[var(--itools-border)]" },
+  { id: "IN_PROGRESS", title: "In Progress", bg: "bg-blue-50/60 border-blue-100" },
+  { id: "REVIEW", title: "Review", bg: "bg-violet-50/60 border-violet-100" },
+  { id: "DONE", title: "Done", bg: "bg-emerald-50/60 border-emerald-100" },
 ];
 
-function Column({ col, tasks }: { col: typeof COLUMNS[0], tasks: Task[] }) {
+function Column({ col, tasks, onTaskSelect }: { col: typeof COLUMNS[0], tasks: Task[]; onTaskSelect?: (task: Task) => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id: col.id,
     data: {
@@ -38,10 +38,15 @@ function Column({ col, tasks }: { col: typeof COLUMNS[0], tasks: Task[] }) {
 
   return (
     <div 
-      className={`flex flex-col flex-1 shrink-0 min-w-[300px] max-w-[350px] rounded-xl border border-zinc-200 bg-zinc-50/50 overflow-hidden ${isOver ? 'ring-2 ring-indigo-400 bg-zinc-100' : ''}`}
+      className={`flex flex-col flex-1 shrink-0 min-w-[300px] max-w-[350px] rounded-2xl border border-[var(--itools-border)] bg-[var(--itools-surface)]/80 overflow-hidden ${isOver ? "ring-2 ring-[var(--itools-navy)]/30 bg-white" : ""}`}
     >
-      <div className="p-3 border-b border-zinc-200 bg-white flex items-center justify-between">
-        <h3 className="font-semibold text-sm text-zinc-800">{col.title} <span className="ml-2 text-xs font-normal text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full">{tasks.length}</span></h3>
+      <div className="p-3 border-b border-[var(--itools-border)] bg-white flex items-center justify-between">
+        <h3 className="font-semibold text-sm text-[var(--itools-navy-deep)]">
+          {col.title}{" "}
+          <span className="ml-2 text-xs font-normal text-[var(--itools-muted)] bg-[var(--itools-surface)] px-2 py-0.5 rounded-lg">
+            {tasks.length}
+          </span>
+        </h3>
       </div>
       <div 
         ref={setNodeRef} 
@@ -49,7 +54,7 @@ function Column({ col, tasks }: { col: typeof COLUMNS[0], tasks: Task[] }) {
       >
         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map(task => (
-            <SortableTaskCard key={task.id} task={task} />
+            <SortableTaskCard key={task.id} task={task} onSelect={onTaskSelect} />
           ))}
         </SortableContext>
       </div>
@@ -57,7 +62,7 @@ function Column({ col, tasks }: { col: typeof COLUMNS[0], tasks: Task[] }) {
   );
 }
 
-function SortableTaskCard({ task }: { task: Task }) {
+function SortableTaskCard({ task, onSelect }: { task: Task; onSelect?: (task: Task) => void }) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: {
@@ -76,19 +81,19 @@ function SortableTaskCard({ task }: { task: Task }) {
       <div 
         ref={setNodeRef} 
         style={style} 
-        className="opacity-30 border-2 border-dashed border-indigo-500/50 rounded-xl bg-indigo-500/10 h-[100px]" 
+        className="opacity-30 border-2 border-dashed border-[var(--itools-navy)]/40 rounded-2xl bg-[var(--itools-navy)]/5 h-[100px]"
       />
     );
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} onClick={() => onSelect?.(task)}>
       <TaskCard task={task} />
     </div>
   );
 }
 
-export default function KanbanBoard({ tasks, pipelineId }: { tasks: Task[], pipelineId: string }) {
+export default function KanbanBoard({ tasks, pipelineId, onTaskSelect }: { tasks: Task[], pipelineId: string; onTaskSelect?: (task: Task) => void }) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const moveTask = useTaskStore(s => s.moveTask);
 
@@ -149,7 +154,7 @@ export default function KanbanBoard({ tasks, pipelineId }: { tasks: Task[], pipe
         onDragEnd={onDragEnd}
       >
         {columnsWithTasks.map(col => (
-          <Column key={col.id} col={col} tasks={col.tasks} />
+          <Column key={col.id} col={col} tasks={col.tasks} onTaskSelect={onTaskSelect} />
         ))}
         
         <DragOverlay>

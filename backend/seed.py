@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.config import MONGO_URI
-from app.credentials import DEFAULT_PASSWORD, password_hash
+from app.credentials import get_default_password, password_hash
 from app.database import new_id
 
 
@@ -33,6 +33,7 @@ def role(
     name: str,
     tier: str,
     committee_id: str | None = None,
+    role_kind: str = "CHAPTER",
     permissions: dict | None = None,
     responsibilities: list | None = None,
 ) -> dict:
@@ -43,6 +44,7 @@ def role(
         "committeeId": committee_id,
         "name": name,
         "tier": tier,
+        "roleKind": role_kind,
         "permissions": json.dumps(permissions or {}),
         "responsibilities": json.dumps(responsibilities or []),
         "sops": "[]",
@@ -56,9 +58,17 @@ async def main() -> None:
     db = client.get_default_database()
     now = datetime.now(timezone.utc)
 
+    from app.settings import bootstrap_runtime_settings, load_settings_cache
+
+    await bootstrap_runtime_settings(db)
+    await load_settings_cache(db)
+
     print("Seeding Silver Oak University IEEE SB EC 2026...\n")
     print("Clearing collections...")
     for name in (
+        "budget_transactions",
+        "budgets",
+        "communications",
         "taskfiles",
         "taskcomments",
         "notifications",
@@ -75,6 +85,8 @@ async def main() -> None:
     com_exec = {
         "_id": new_id(),
         "name": "Executive Chairs",
+        "shortName": "Executive Chairs",
+        "category": "EXECUTIVE",
         "year": "2026",
         "status": "active",
         "createdAt": now,
@@ -82,6 +94,8 @@ async def main() -> None:
     com_main = {
         "_id": new_id(),
         "name": "Silver Oak University IEEE Student Branch",
+        "shortName": "Main SB",
+        "category": "STUDENT_BRANCH",
         "year": "2026",
         "status": "active",
         "createdAt": now,
@@ -89,6 +103,8 @@ async def main() -> None:
     com_coord = {
         "_id": new_id(),
         "name": "Student Branch Coordination",
+        "shortName": "SB Coordination",
+        "category": "STUDENT_BRANCH",
         "year": "2026",
         "status": "active",
         "createdAt": now,
@@ -96,6 +112,8 @@ async def main() -> None:
     com_sps = {
         "_id": new_id(),
         "name": "SOU IEEE Signal Processing Society Chapter",
+        "shortName": "Signal Processing",
+        "category": "SOCIETY",
         "year": "2026",
         "status": "active",
         "createdAt": now,
@@ -103,6 +121,8 @@ async def main() -> None:
     com_cs = {
         "_id": new_id(),
         "name": "SOU IEEE Computer Society Chapter",
+        "shortName": "Computer Society",
+        "category": "SOCIETY",
         "year": "2026",
         "status": "active",
         "createdAt": now,
@@ -110,6 +130,8 @@ async def main() -> None:
     com_wie = {
         "_id": new_id(),
         "name": "SOU IEEE Women In Engineering Affinity Group",
+        "shortName": "Women In Engineering",
+        "category": "AFFINITY_GROUP",
         "year": "2026",
         "status": "active",
         "createdAt": now,
@@ -117,6 +139,8 @@ async def main() -> None:
     com_sight = {
         "_id": new_id(),
         "name": "SOU IEEE SIGHT Group",
+        "shortName": "SIGHT",
+        "category": "GROUP",
         "year": "2026",
         "status": "active",
         "createdAt": now,
@@ -131,6 +155,7 @@ async def main() -> None:
         "Executive Chair",
         "MASTER",
         com_exec["_id"],
+        "MAIN",
         {"all": True},
         ["Provides leadership", "Strategic direction", "Guidance for EC 2026"],
     )
@@ -138,6 +163,7 @@ async def main() -> None:
         "Chairperson",
         "LEADERSHIP",
         com_main["_id"],
+        "MAIN",
         {"manageUsers": True, "managePipelines": True, "manageTasks": True},
         ["Overall management", "Represent student branch", "Lead initiatives"],
     )
@@ -145,57 +171,66 @@ async def main() -> None:
         "Vice Chairperson",
         "LEADERSHIP",
         com_main["_id"],
+        "MAIN",
         {"managePipelines": True, "manageTasks": True},
         ["Support chairperson", "Coordination", "Chapter oversight"],
     )
     role_sec = role(
         "Secretary",
-        "OPERATIONS",
+        "LEADERSHIP",
         com_main["_id"],
+        "MAIN",
         {"manageTasks": True, "viewReports": True},
         ["Documentation", "Communications", "Meeting minutes"],
     )
     role_tres = role(
         "Treasurer",
-        "OPERATIONS",
+        "LEADERSHIP",
         com_main["_id"],
+        "MAIN",
         {"manageBudget": True, "viewReports": True},
         ["Budget planning", "Expense tracking", "Financial audits"],
     )
     role_web = role(
         "Webmaster",
-        "OPERATIONS",
+        "LEADERSHIP",
         com_main["_id"],
+        "MAIN",
         {"manageTasks": True},
         ["Website maintenance", "Portal administration", "Digital assets"],
     )
     role_ch_chair = role(
         "Chapter Chairperson",
         "LEADERSHIP",
-        permissions={"manageTasks": True},
+        role_kind="CHAPTER",
+        permissions={"manageTasks": True, "manageUsers": True},
         responsibilities=["Lead chapter activities", "Plan workshops"],
     )
     role_ch_vice = role(
         "Chapter Vice Chairperson",
         "LEADERSHIP",
+        role_kind="CHAPTER",
         permissions={"manageTasks": True},
         responsibilities=["Support chapter chair", "Oversee events"],
     )
     role_ch_sec = role(
         "Chapter Secretary",
-        "OPERATIONS",
+        "LEADERSHIP",
+        role_kind="CHAPTER",
         permissions={"viewTasks": True},
         responsibilities=["Document chapter meetings", "Manage roster"],
     )
     role_ch_tres = role(
         "Chapter Treasurer",
-        "OPERATIONS",
-        permissions={"viewTasks": True},
+        "LEADERSHIP",
+        role_kind="CHAPTER",
+        permissions={"viewTasks": True, "manageBudget": True},
         responsibilities=["Manage chapter funds", "Budget requests"],
     )
     role_ch_web = role(
         "Chapter Webmaster",
-        "OPERATIONS",
+        "LEADERSHIP",
+        role_kind="CHAPTER",
         permissions={"viewTasks": True},
         responsibilities=["Maintain chapter web presence"],
     )
@@ -436,9 +471,225 @@ async def main() -> None:
         }
     )
 
+    # ── Communications ──────────────────────────────────────────────────────
+    comms = [
+        {
+            "_id": new_id(),
+            "type": "ANNOUNCEMENT",
+            "committeeId": com_main["_id"],
+            "authorId": main_chair["_id"],
+            "title": "TechNova 2026 — Registration Opens April 1",
+            "content": "Registration for our flagship hackathon opens April 1. All chapter chairs should share the link with their members and encourage participation from first-year students.",
+            "priority": "HIGH",
+            "pinned": True,
+            "parentId": None,
+            "meetingDate": None,
+            "createdAt": now,
+            "updatedAt": now,
+        },
+        {
+            "_id": new_id(),
+            "type": "ANNOUNCEMENT",
+            "committeeId": com_main["_id"],
+            "authorId": main_vice["_id"],
+            "title": "Q1 Membership Drive Kickoff",
+            "content": "The membership drive for Q1 2026 begins this week. Each chapter should submit their outreach plan to the Secretary by Friday.",
+            "priority": "NORMAL",
+            "pinned": False,
+            "parentId": None,
+            "meetingDate": None,
+            "createdAt": now,
+            "updatedAt": now,
+        },
+        {
+            "_id": new_id(),
+            "type": "MEETING_MINUTES",
+            "committeeId": com_main["_id"],
+            "authorId": main_sec["_id"],
+            "title": "EC Meeting — March 2026",
+            "content": "Attendees: Chair, Vice Chair, Secretary, Treasurer, Webmaster.\n\nAgenda:\n1. TechNova 2026 planning status\n2. Budget approval for Q1 events\n3. Chapter coordination updates\n\nAction items assigned via pipelines.",
+            "priority": "NORMAL",
+            "pinned": False,
+            "parentId": None,
+            "meetingDate": datetime(2026, 3, 10, tzinfo=timezone.utc),
+            "createdAt": now,
+            "updatedAt": now,
+        },
+        {
+            "_id": new_id(),
+            "type": "MEETING_MINUTES",
+            "committeeId": com_cs["_id"],
+            "authorId": cs_sec["_id"],
+            "title": "CS Chapter — Workshop Planning",
+            "content": "Discussed AI/ML workshop series schedule. Four sessions planned: Python basics, NumPy/Pandas, scikit-learn intro, and a capstone project session.",
+            "priority": "NORMAL",
+            "pinned": False,
+            "parentId": None,
+            "meetingDate": datetime(2026, 3, 5, tzinfo=timezone.utc),
+            "createdAt": now,
+            "updatedAt": now,
+        },
+    ]
+    discussion = {
+        "_id": new_id(),
+        "type": "DISCUSSION",
+        "committeeId": com_main["_id"],
+        "authorId": main_chair["_id"],
+        "title": "Venue options for TechNova finals",
+        "content": "We need to finalize the venue for TechNova finals. Options: Main Auditorium (500 cap) or CS Block Seminar Hall (200 cap). Thoughts?",
+        "priority": "NORMAL",
+        "pinned": False,
+        "parentId": None,
+        "meetingDate": None,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    comms.append(discussion)
+    await db.communications.insert_many(comms)
+    await db.communications.insert_many(
+        [
+            {
+                "_id": new_id(),
+                "type": "DISCUSSION",
+                "committeeId": com_main["_id"],
+                "authorId": main_vice["_id"],
+                "title": f"Re: {discussion['title']}",
+                "content": "Main Auditorium gives us more capacity for the demo day. I'd recommend booking it early.",
+                "priority": "NORMAL",
+                "pinned": False,
+                "parentId": discussion["_id"],
+                "meetingDate": None,
+                "createdAt": now,
+                "updatedAt": now,
+            },
+            {
+                "_id": new_id(),
+                "type": "DISCUSSION",
+                "committeeId": com_main["_id"],
+                "authorId": main_web["_id"],
+                "title": f"Re: {discussion['title']}",
+                "content": "CS Block has better WiFi infrastructure for live demos. Worth considering if we expect heavy network usage.",
+                "priority": "NORMAL",
+                "pinned": False,
+                "parentId": discussion["_id"],
+                "meetingDate": None,
+                "createdAt": now,
+                "updatedAt": now,
+            },
+        ]
+    )
+    print("  Communications seeded (announcements, minutes, discussions)")
+
+    # ── Budget & finance ────────────────────────────────────────────────────
+    main_budget = {
+        "_id": new_id(),
+        "committeeId": com_main["_id"],
+        "fiscalYear": "2026",
+        "allocatedAmount": 250000.0,
+        "currency": "INR",
+        "createdBy": main_chair["_id"],
+        "createdAt": now,
+        "updatedAt": now,
+        "updatedBy": main_chair["_id"],
+    }
+    cs_budget = {
+        "_id": new_id(),
+        "committeeId": com_cs["_id"],
+        "fiscalYear": "2026",
+        "allocatedAmount": 75000.0,
+        "currency": "INR",
+        "createdBy": cs_chair["_id"],
+        "createdAt": now,
+        "updatedAt": now,
+        "updatedBy": cs_chair["_id"],
+    }
+    await db.budgets.insert_many([main_budget, cs_budget])
+
+    budget_txns = [
+        {
+            "_id": new_id(),
+            "committeeId": com_main["_id"],
+            "fiscalYear": "2026",
+            "type": "INCOME",
+            "amount": 50000.0,
+            "category": "Sponsorship",
+            "description": "TechNova title sponsor advance",
+            "status": "APPROVED",
+            "createdBy": main_chair["_id"],
+            "approvedBy": main_chair["_id"],
+            "approvedAt": now,
+            "transactionDate": now,
+            "createdAt": now,
+            "updatedAt": now,
+        },
+        {
+            "_id": new_id(),
+            "committeeId": com_main["_id"],
+            "fiscalYear": "2026",
+            "type": "EXPENSE",
+            "amount": 18500.0,
+            "category": "Events",
+            "description": "Venue deposit — Main Auditorium",
+            "status": "APPROVED",
+            "createdBy": main_tres["_id"],
+            "approvedBy": main_chair["_id"],
+            "approvedAt": now,
+            "transactionDate": now,
+            "createdAt": now,
+            "updatedAt": now,
+        },
+        {
+            "_id": new_id(),
+            "committeeId": com_main["_id"],
+            "fiscalYear": "2026",
+            "type": "REIMBURSEMENT",
+            "amount": 3200.0,
+            "category": "Travel",
+            "description": "Speaker travel reimbursement — workshop",
+            "status": "PENDING",
+            "createdBy": main_tres["_id"],
+            "approvedBy": None,
+            "approvedAt": None,
+            "transactionDate": now,
+            "createdAt": now,
+            "updatedAt": now,
+        },
+        {
+            "_id": new_id(),
+            "committeeId": com_cs["_id"],
+            "fiscalYear": "2026",
+            "type": "EXPENSE",
+            "amount": 4500.0,
+            "category": "Merchandise",
+            "description": "Hackathon swag and badges",
+            "status": "PENDING",
+            "createdBy": cs_tres["_id"],
+            "approvedBy": None,
+            "approvedAt": None,
+            "transactionDate": now,
+            "createdAt": now,
+            "updatedAt": now,
+        },
+    ]
+    await db.budget_transactions.insert_many(budget_txns)
+    await db.notifications.insert_one(
+        {
+            "_id": new_id(),
+            "senderId": main_tres["_id"],
+            "recipientId": main_chair["_id"],
+            "committeeId": com_main["_id"],
+            "type": "BUDGET",
+            "scope": "PERSONAL",
+            "message": "Budget approval needed: Reimbursement ₹3,200 — Speaker travel reimbursement — workshop",
+            "isRead": False,
+            "sentAt": now,
+        }
+    )
+    print("  Budgets and transactions seeded")
+
     print("\nSeed complete!")
-    print(f"  {len(all_users)} members | 7 committees | 4 pipelines | 5 tasks")
-    print(f"  Default password for all accounts: {DEFAULT_PASSWORD}")
+    print(f"  {len(all_users)} members | 7 committees | 4 pipelines | 5 tasks | 2 budgets")
+    print(f"  Default password for all accounts: {get_default_password()}")
     print("  Login examples:")
     print("    chair@ieeesb.org        (Chairperson — Aditya Soni)")
     print("    anurag@ieeesb.org       (Executive Chair)")

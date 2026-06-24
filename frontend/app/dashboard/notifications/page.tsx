@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Bell, CheckCircle2, AlertCircle } from "lucide-react";
+import { useEffect } from "react";
+import { Bell, CheckCircle2, AlertCircle, Landmark, ListTodo } from "lucide-react";
 import { useNotificationStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader, EmptyState, cardClass } from "@/components/dashboard/ui";
 
 export default function NotificationsPage() {
   const { notifications, loading, fetchNotifications, markRead, markAllRead } = useNotificationStore();
@@ -15,66 +17,72 @@ export default function NotificationsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Notifications</h1>
+      <div className="space-y-6 max-w-3xl">
+        <Skeleton className="h-10 w-48" />
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-20 bg-white border border-zinc-200 rounded-lg animate-pulse" />
+            <Skeleton key={i} className={`h-20 ${cardClass}`} />
           ))}
         </div>
       </div>
     );
   }
 
-  const unreadExist = notifications.some(n => !n.isRead);
+  const unreadExist = notifications.some((n) => !n.isRead);
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Notifications</h1>
-          <p className="text-zinc-500 mt-1">Stay updated with activities across iTools</p>
-        </div>
+    <div className="space-y-6 max-w-3xl">
+      <PageHeader title="Notifications" description="Task updates and committee alerts.">
         {unreadExist && (
-          <Button 
-            variant="outline" 
-            className="border-zinc-200 text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50"
+          <Button
+            variant="outline"
+            className="rounded-xl border-[var(--itools-border)] text-sm h-9"
             onClick={() => markAllRead()}
           >
-            <CheckCircle2 className="w-4 h-4 mr-2" /> Mark all as read
+            <CheckCircle2 className="w-4 h-4 mr-1.5" /> Mark all read
           </Button>
         )}
-      </div>
+      </PageHeader>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {notifications.map((n) => (
-          <Card 
-            key={n.id} 
-            className={`transition-colors shadow-sm ${
-              n.isRead ? 'bg-zinc-50 border-zinc-200/80' : 'bg-white border-indigo-200/80'
+          <Card
+            key={n.id}
+            className={`${cardClass} transition-colors ${
+              n.isRead ? "opacity-80" : "border-[var(--itools-navy)]/20"
             }`}
           >
-            <CardContent className="p-4 flex gap-4">
-              <div className={`mt-0.5 rounded-full p-2 h-fit ${n.isRead ? 'bg-zinc-100 text-zinc-500' : 'bg-indigo-50 text-indigo-600'}`}>
-                {n.type === 'SYSTEM' ? <AlertCircle className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+            <CardContent className="p-4 flex gap-3">
+              <div
+                className={`rounded-lg p-2 h-fit shrink-0 ${
+                  n.isRead ? "bg-[var(--itools-surface)] text-[var(--itools-muted)]" : "bg-[var(--itools-navy)] text-white"
+                }`}
+              >
+                {n.type === "BUDGET" ? (
+                  <Landmark className="w-4 h-4" />
+                ) : n.type === "TASK_ASSIGNED" ? (
+                  <ListTodo className="w-4 h-4" />
+                ) : n.type === "SYSTEM" ? (
+                  <AlertCircle className="w-4 h-4" />
+                ) : (
+                  <Bell className="w-4 h-4" />
+                )}
               </div>
-              <div className="flex-1 space-y-1">
-                <div className="flex justify-between items-start">
-                  <p className={`text-sm ${n.isRead ? 'text-zinc-500' : 'text-zinc-800 font-medium'}`}>
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex justify-between items-start gap-3">
+                  <p className={`text-sm ${n.isRead ? "text-[var(--itools-muted)]" : "text-[var(--itools-navy-deep)] font-medium"}`}>
                     {n.message}
                   </p>
-                  <span className="text-[11px] text-zinc-500 whitespace-nowrap ml-4">
-                    {new Date(n.sentAt).toLocaleString()}
-                  </span>
+                  <time className="text-[11px] text-[var(--itools-muted)] whitespace-nowrap shrink-0">
+                    {new Date(n.sentAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </time>
                 </div>
-                {n.sender && (
-                  <p className="text-xs text-zinc-500">From: {n.sender.name}</p>
-                )}
+                {n.sender && <p className="text-xs text-[var(--itools-muted)]">From {n.sender.name}</p>}
                 {!n.isRead && (
-                  <Button 
-                    variant="link" 
+                  <Button
+                    variant="link"
                     onClick={() => markRead(n.id)}
-                    className="h-auto p-0 text-[11px] text-indigo-400 mt-2 hover:text-indigo-300"
+                    className="h-auto p-0 text-xs text-[var(--itools-navy)] font-medium"
                   >
                     Mark as read
                   </Button>
@@ -85,11 +93,11 @@ export default function NotificationsPage() {
         ))}
 
         {notifications.length === 0 && (
-          <div className="py-20 text-center border-2 border-dashed border-zinc-200 rounded-xl bg-zinc-50/50">
-            <Bell className="w-12 h-12 text-zinc-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-zinc-700">You're all caught up!</h3>
-            <p className="text-zinc-500 mt-1 max-w-sm mx-auto">We'll notify you here when there's an update on your tasks or pipelines.</p>
-          </div>
+          <EmptyState
+            icon={Bell}
+            title="You're all caught up"
+            description="We'll notify you when there's an update on your tasks or pipelines."
+          />
         )}
       </div>
     </div>

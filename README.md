@@ -1,6 +1,6 @@
 # iTools — Executive Committee Operating System
 
-A management portal for Executive Committees (e.g., IEEE Student Branches).
+A management portal for Executive Committees (e.g., Silver Oak University IEEE Student Branches).
 
 ## Project Structure
 

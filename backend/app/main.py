@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import close_db, connect_db
-from app.routes import auth, notifications, pipelines, roles, tasks, users
+from app.routes import auth, budgets, committees, communications, notifications, pipelines, roles, system_settings, tasks, users
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 
@@ -41,6 +41,10 @@ api.include_router(roles.router, prefix="/api/v1")
 api.include_router(pipelines.router, prefix="/api/v1")
 api.include_router(tasks.router, prefix="/api/v1")
 api.include_router(notifications.router, prefix="/api/v1")
+api.include_router(communications.router, prefix="/api/v1")
+api.include_router(committees.router, prefix="/api/v1")
+api.include_router(budgets.router, prefix="/api/v1")
+api.include_router(system_settings.router, prefix="/api/v1")
 
 
 @api.get("/health")
