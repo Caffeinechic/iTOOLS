@@ -86,8 +86,24 @@ function SortableTaskCard({ task, onSelect }: { task: Task; onSelect?: (task: Ta
     );
   }
 
+  const handleActivate = () => onSelect?.(task);
+
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} onClick={() => onSelect?.(task)}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      role="button"
+      tabIndex={0}
+      onClick={handleActivate}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleActivate();
+        }
+      }}
+    >
       <TaskCard task={task} />
     </div>
   );

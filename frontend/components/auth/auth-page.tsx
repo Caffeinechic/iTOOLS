@@ -89,7 +89,7 @@ export default function AuthPage() {
         setErrorMsg(
           typeof err === "string"
             ? err === "Invalid credentials"
-              ? "Invalid email or password. Seeded accounts use admin123 — if this is a fresh install, run seed on the backend database."
+              ? "Invalid email or password. If this is a fresh install, run seed on the backend database."
               : err
             : err?.message || (mode === "signin" ? "Invalid email or password." : "Registration failed.")
         );

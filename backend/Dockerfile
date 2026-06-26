@@ -8,6 +8,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY seed.py .
 
+RUN adduser --disabled-password --gecos '' appuser && chown -R appuser:appuser /app
+USER appuser
+
 ENV PORT=4000
 EXPOSE 4000
 

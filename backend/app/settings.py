@@ -128,7 +128,7 @@ async def bootstrap_runtime_settings(db=None) -> None:
 
     defaults: dict[str, str] = {
         "JWT_SECRET": secrets.token_urlsafe(48),
-        "DEFAULT_PASSWORD": "admin123",
+        "DEFAULT_PASSWORD": secrets.token_urlsafe(16),
     }
 
     for key, default_value in defaults.items():

@@ -435,7 +435,9 @@ export function AddMemberDialog({
                 placeholder="name@ieeesb.org"
               />
             </div>
-            <p className="text-xs text-[var(--itools-muted)]">Default password: admin123</p>
+            <p className="text-xs text-[var(--itools-muted)]">
+              Members use the shared EC default password from System Settings.
+            </p>
             <DialogFooter>
               <Button type="submit" disabled={saving} className={btnPrimary}>
                 {saving ? "Adding…" : "Add member"}

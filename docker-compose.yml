@@ -1,10 +1,11 @@
+# Copy .env.example to .env and set MONGO_ROOT_PASSWORD before starting.
 services:
   mongo:
     image: mongo:6
     container_name: itools_mongo
     environment:
-      MONGO_INITDB_ROOT_USERNAME: itoolsmongo
-      MONGO_INITDB_ROOT_PASSWORD: itoolsmongopassword
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     ports:
       - "27018:27017"
     volumes:
@@ -20,7 +21,7 @@ services:
       - ./backend/.env
     environment:
       PORT: "4000"
-      MONGO_URI: mongodb://itoolsmongo:itoolsmongopassword@mongo:27017/itools?authSource=admin
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/itools?authSource=admin
       NODE_ENV: production
     depends_on:
       - mongo

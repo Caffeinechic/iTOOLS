@@ -2,7 +2,10 @@ from app.settings import get_setting
 
 
 def get_default_password() -> str:
-    return get_setting("DEFAULT_PASSWORD", "admin123")
+    value = get_setting("DEFAULT_PASSWORD")
+    if not value:
+        raise RuntimeError("DEFAULT_PASSWORD is not configured")
+    return value
 
 
 def password_hash(password: str | None = None) -> str:
