@@ -175,14 +175,12 @@
     @apply text-muted-foreground hover:text-foreground hover:bg-secondary/80;
   }
 
-  .icon-rail,
   .sidebar-rail {
     width: 4.25rem;
     background-color: hsl(var(--surface-elevated));
     border-right: 1px solid hsl(var(--border-subtle) / 0.6);
   }
 
-  .nav-panel,
   .sidebar-panel {
     background-color: hsl(var(--sidebar-bg));
     border-right: 1px solid hsl(var(--border-subtle) / 0.6);

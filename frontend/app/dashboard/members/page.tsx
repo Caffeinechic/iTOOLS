@@ -15,7 +15,7 @@ import {
   roleHierarchyPriority,
   roleKindForCommittee,
 } from "@/lib/committees";
-import { AddMemberDialog } from "@/components/members/add-member-dialog";
+import { AddMemberDialog } from "@/features/members";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";

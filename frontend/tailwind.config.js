@@ -6,7 +6,7 @@ export default {
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
-    "./sidebar/**/*.{ts,tsx}",
+    "./features/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
   ],
   theme: {

@@ -7,7 +7,7 @@ import { Bell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sidebar } from "@/sidebar/components/Sidebar";
+import { Sidebar } from "@/features/sidebar";
 import { useAuthStore, useNotificationStore } from "@/lib/store";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
 
