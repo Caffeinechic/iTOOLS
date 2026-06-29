@@ -6,8 +6,14 @@ import { useAuthStore, Role } from "@/lib/store";
 import {
   Committee,
   MEMBER_FILTER_TABS,
+  MemberFilterTabId,
+  CHAPTER_LEADERSHIP_ROLES,
+  MAIN_LEADERSHIP_ROLES,
   committeeCategory,
   committeeShortName,
+  committeesForMemberFilter,
+  roleHierarchyPriority,
+  roleKindForCommittee,
 } from "@/lib/committees";
 import { AddMemberDialog } from "@/components/members/add-member-dialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +30,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   User,
   Search,
   UserPlus,
@@ -32,8 +45,10 @@ import {
   Mail,
   Briefcase,
   Trash2,
+  MoreHorizontal,
 } from "lucide-react";
 import { PageHeader, EmptyState, cardClass, btnPrimary, inputClass } from "@/components/dashboard/ui";
+import { AppSelect } from "@/components/patterns";
 
 interface Member {
   id: string;
@@ -63,8 +78,9 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
-  const [sortBy, setSortBy] = useState("tier-desc");
+  const [activeTab, setActiveTab] = useState<MemberFilterTabId>("all");
+  const [activeCommitteeId, setActiveCommitteeId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState("hierarchy");
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -72,6 +88,7 @@ export default function MembersPage() {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editRoleId, setEditRoleId] = useState("");
+  const [editCommitteeId, setEditCommitteeId] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -144,10 +161,26 @@ export default function MembersPage() {
     setEditName(member.name);
     setEditEmail(member.email);
     setEditRoleId(member.roleId || "");
+    setEditCommitteeId(member.committee?.id || "");
     setFormError(null);
     setEditOpen(true);
     await loadRoles();
   };
+
+  const editCommittee = committees.find((c) => c.id === editCommitteeId);
+
+  const editRoleOptions = useMemo(() => {
+    if (!editCommittee) return roles;
+    const kind = roleKindForCommittee(editCommittee);
+    const filtered = roles.filter((r) => (r.roleKind || "CHAPTER") === kind);
+    const order: readonly string[] =
+      kind === "MAIN" ? MAIN_LEADERSHIP_ROLES : CHAPTER_LEADERSHIP_ROLES;
+    return [...filtered].sort((a, b) => {
+      const ai = order.indexOf(a.name);
+      const bi = order.indexOf(b.name);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  }, [roles, editCommittee]);
 
   const handleEditMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,6 +193,7 @@ export default function MembersPage() {
         email: editEmail.trim(),
       };
       if (editRoleId) body.roleId = editRoleId;
+      if (editCommitteeId) body.committeeId = editCommitteeId;
       await apiFetch(`/users/${editingMember.id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
@@ -174,40 +208,18 @@ export default function MembersPage() {
     }
   };
 
-  const handleDeleteMember = async (member: Member) => {
+  const handleDeleteMember = async (member: Member, closeEdit = false) => {
     if (!confirm(`Remove ${member.name} from the roster?`)) return;
     setFormError(null);
     try {
       await apiFetch(`/users/${member.id}`, { method: "DELETE" });
+      if (closeEdit) {
+        setEditOpen(false);
+        setEditingMember(null);
+      }
       await loadMembers();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not remove member");
-    }
-  };
-
-  const getTierBadgeDetails = (tier: string) => {
-    switch (tier) {
-      case "MASTER":
-        return { label: "FACULTY", className: "bg-red-50 text-red-600 border-red-100" };
-      case "LEADERSHIP":
-        return { label: "CORE", className: "bg-blue-50 text-blue-600 border-blue-100" };
-      case "OPERATIONS":
-        return { label: "EXECUTIVE", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
-      default:
-        return { label: "MEMBER", className: "bg-slate-50 text-slate-600 border-slate-100" };
-    }
-  };
-
-  const getTierPriority = (tier: string) => {
-    switch (tier) {
-      case "MASTER":
-        return 4;
-      case "LEADERSHIP":
-        return 3;
-      case "OPERATIONS":
-        return 2;
-      default:
-        return 1;
     }
   };
 
@@ -231,7 +243,15 @@ export default function MembersPage() {
       m.email.toLowerCase().includes(search.toLowerCase())
   );
 
+  const unitFilterOptions = useMemo(
+    () => committeesForMemberFilter(committees, activeTab),
+    [committees, activeTab]
+  );
+
   const classifiedMembers = useMemo(() => {
+    if (activeCommitteeId) {
+      return searchedMembers.filter((member) => member.committee?.id === activeCommitteeId);
+    }
     const tab = MEMBER_FILTER_TABS.find((t) => t.id === activeTab);
     if (!tab || activeTab === "all") return searchedMembers;
     if (!("categories" in tab)) return searchedMembers;
@@ -240,15 +260,19 @@ export default function MembersPage() {
       const cat = committeeCategory(member.committee as Committee);
       return tab.categories.includes(cat);
     });
-  }, [searchedMembers, activeTab]);
+  }, [searchedMembers, activeTab, activeCommitteeId]);
 
   const sortedMembers = [...classifiedMembers].sort((a, b) => {
     if (sortBy === "name-asc") return a.name.localeCompare(b.name);
     if (sortBy === "name-desc") return b.name.localeCompare(a.name);
-    if (sortBy === "tier-desc") {
-      const priorityA = getTierPriority(a.role?.tier || "");
-      const priorityB = getTierPriority(b.role?.tier || "");
-      if (priorityB !== priorityA) return priorityB - priorityA;
+    if (sortBy === "hierarchy") {
+      const unitA = a.committee ? committeeShortName(a.committee as Committee) : "zzz";
+      const unitB = b.committee ? committeeShortName(b.committee as Committee) : "zzz";
+      const unitCmp = unitA.localeCompare(unitB);
+      if (unitCmp !== 0) return unitCmp;
+      const roleCmp =
+        roleHierarchyPriority(a.role?.name || "") - roleHierarchyPriority(b.role?.name || "");
+      if (roleCmp !== 0) return roleCmp;
       return a.name.localeCompare(b.name);
     }
     if (sortBy === "date-desc")
@@ -266,6 +290,15 @@ export default function MembersPage() {
         if (!m.committee) return false;
         return tab.categories.includes(committeeCategory(m.committee as Committee));
       }).length;
+    }
+    return counts;
+  }, [members]);
+
+  const unitCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const member of members) {
+      if (!member.committee?.id) continue;
+      counts[member.committee.id] = (counts[member.committee.id] ?? 0) + 1;
     }
     return counts;
   }, [members]);
@@ -319,29 +352,72 @@ export default function MembersPage() {
         </div>
       )}
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {MEMBER_FILTER_TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          const count = tabCounts[tab.id] ?? 0;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shrink-0 ${
-                isActive
-                  ? "bg-[var(--itools-navy)] text-white"
-                  : "bg-white text-[var(--itools-muted)] border border-[var(--itools-border)] hover:text-[var(--itools-navy-deep)]"
-              }`}
-            >
-              {tab.label}
-              {tab.id !== "all" && (
-                <span className={`ml-1.5 ${isActive ? "text-white/70" : "text-[var(--itools-muted)]"}`}>
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {MEMBER_FILTER_TABS.map((tab) => {
+            const isActive = activeTab === tab.id && !activeCommitteeId;
+            const count = tabCounts[tab.id] ?? 0;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setActiveCommitteeId(null);
+                }}
+                className={`whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shrink-0 ${
+                  isActive
+                    ? "bg-[var(--itools-navy)] text-white"
+                    : "bg-white text-[var(--itools-muted)] border border-[var(--itools-border)] hover:text-[var(--itools-navy-deep)]"
+                }`}
+              >
+                {tab.label}
+                {tab.id !== "all" && (
+                  <span className={`ml-1.5 ${isActive ? "text-white/70" : "text-[var(--itools-muted)]"}`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {unitFilterOptions.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {unitFilterOptions.map((unit) => {
+              const isActive = activeCommitteeId === unit.id;
+              const count = unitCounts[unit.id] ?? 0;
+              return (
+                <button
+                  key={unit.id}
+                  onClick={() => {
+                    setActiveCommitteeId(isActive ? null : unit.id);
+                    if (!isActive && activeTab === "all") {
+                      const tab = MEMBER_FILTER_TABS.find(
+                        (t) =>
+                          "categories" in t &&
+                          t.categories.includes(committeeCategory(unit))
+                      );
+                      if (tab) setActiveTab(tab.id);
+                    }
+                  }}
+                  className={`whitespace-nowrap px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors shrink-0 ${
+                    isActive
+                      ? "bg-violet-600 text-white"
+                      : count > 0
+                        ? "bg-violet-50 text-violet-700 border border-violet-100 hover:border-violet-200"
+                        : "bg-white text-[var(--itools-muted)] border border-[var(--itools-border)] hover:text-[var(--itools-navy-deep)]"
+                  }`}
+                  title={unit.name}
+                >
+                  {committeeShortName(unit)}
+                  <span className={`ml-1 ${isActive ? "text-white/70" : "opacity-70"}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
@@ -349,29 +425,28 @@ export default function MembersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--itools-muted)]" />
           <Input
             type="text"
-            placeholder="Search by name, role, or email…"
+            placeholder="Search by name, role, or email..."
             className={`pl-10 ${inputClass}`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select
+        <AppSelect
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className={`${inputClass} px-3 w-full sm:w-auto text-sm`}
-          aria-label="Sort members"
-        >
-          <option value="tier-desc">Leadership first</option>
-          <option value="name-asc">Name A–Z</option>
-          <option value="name-desc">Name Z–A</option>
-          <option value="date-desc">Newest</option>
-          <option value="date-asc">Oldest</option>
-        </select>
+          onValueChange={setSortBy}
+          className="w-full sm:w-[11rem]"
+          options={[
+            { value: "hierarchy", label: "Role hierarchy" },
+            { value: "name-asc", label: "Name A–Z" },
+            { value: "name-desc", label: "Name Z–A" },
+            { value: "date-desc", label: "Newest" },
+            { value: "date-asc", label: "Oldest" },
+          ]}
+        />
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {sortedMembers.map((member) => {
-          const tierDetails = getTierBadgeDetails(member.role?.tier || "MEMBER");
           const formattedDate = new Date(member.createdAt).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -391,24 +466,31 @@ export default function MembersPage() {
                     {initial}
                   </div>
                   {canManage && (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(member)}
-                        className="w-8 h-8 rounded-lg bg-[var(--itools-surface)] hover:bg-[var(--itools-border)] border border-[var(--itools-border)] flex items-center justify-center transition-colors text-[var(--itools-muted)] hover:text-[var(--itools-navy-deep)]"
-                        aria-label={`Edit ${member.name}`}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteMember(member)}
-                        className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 border border-red-100 flex items-center justify-center transition-colors text-red-500"
-                        aria-label={`Remove ${member.name}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-8 h-8 rounded-lg bg-[var(--itools-surface)] hover:bg-[var(--itools-border)] border border-[var(--itools-border)] flex items-center justify-center transition-colors text-[var(--itools-muted)] hover:text-[var(--itools-navy-deep)]"
+                          aria-label={`Actions for ${member.name}`}
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                        <DropdownMenuItem onClick={() => openEdit(member)} className="gap-2 cursor-pointer">
+                          <Pencil className="w-3.5 h-3.5" />
+                          Edit member
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteMember(member)}
+                          className="gap-2 cursor-pointer text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Remove
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
 
@@ -422,12 +504,6 @@ export default function MembersPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    <Badge
-                      variant="outline"
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full border tracking-wider ${tierDetails.className}`}
-                    >
-                      {tierDetails.label}
-                    </Badge>
                     {categoryLabel && (
                       <Badge
                         variant="outline"
@@ -517,22 +593,45 @@ export default function MembersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Role</Label>
-              <select
-                value={editRoleId}
-                onChange={(e) => setEditRoleId(e.target.value)}
-                className={`w-full ${inputClass} px-3`}
-              >
-                <option value="">Keep current role</option>
-                {roles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                    {r.committee ? ` — ${committeeShortName(r.committee)}` : ""}
-                  </option>
-                ))}
-              </select>
+              <Label className="text-sm font-medium">Unit</Label>
+              <AppSelect
+                value={editCommitteeId || "__none__"}
+                onValueChange={(v) => {
+                  setEditCommitteeId(v === "__none__" ? "" : v);
+                  setEditRoleId("");
+                }}
+                options={[
+                  { value: "__none__", label: "No unit" },
+                  ...committees.map((c) => ({
+                    value: c.id,
+                    label: `${committeeShortName(c)} - ${c.name}`,
+                  })),
+                ]}
+              />
             </div>
-            <DialogFooter>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Leadership role</Label>
+              <AppSelect
+                value={editRoleId || "__keep__"}
+                onValueChange={(v) => setEditRoleId(v === "__keep__" ? "" : v)}
+                options={[
+                  { value: "__keep__", label: "Keep current role" },
+                  ...editRoleOptions.map((r) => ({ value: r.id, label: r.name })),
+                ]}
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() =>
+                  editingMember && handleDeleteMember(editingMember, true)
+                }
+                className="rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50 mr-auto"
+              >
+                <Trash2 className="w-4 h-4 mr-1.5" />
+                Remove
+              </Button>
               <Button
                 type="button"
                 variant="ghost"
@@ -542,7 +641,7 @@ export default function MembersPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={saving} className={btnPrimary}>
-                {saving ? "Saving…" : "Save changes"}
+                {saving ? "Saving..." : "Save changes"}
               </Button>
             </DialogFooter>
           </form>

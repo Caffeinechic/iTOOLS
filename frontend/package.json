@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
+    "dev:webpack": "next dev --port 3000 --webpack",
+    "build:wordmark": "node scripts/build-wordmark.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
@@ -29,6 +31,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.7.0",
+    "motion": "^12.42.0",
     "next": "16.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

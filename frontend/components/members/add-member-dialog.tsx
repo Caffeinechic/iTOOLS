@@ -134,8 +134,9 @@ export function AddMemberDialog({
     setRoleId("");
     setCreatingUnit(false);
     const units = committeesForOrgPicker(committees, org);
-    if (units.length === 1) {
-      setCommitteeId(units[0].id);
+    const sole = units.length === 1 ? units[0] : undefined;
+    if (sole) {
+      setCommitteeId(sole.id);
       setStep(3);
     } else {
       setStep(2);
@@ -220,7 +221,7 @@ export function AddMemberDialog({
             Add executive member
           </DialogTitle>
           <p className="text-xs text-[var(--itools-muted)] pt-1">
-            Step {step} of 4 — {stepLabels[step - 1]}
+            Step {step} of 4 - {stepLabels[step - 1]}
           </p>
         </DialogHeader>
 
@@ -316,7 +317,7 @@ export function AddMemberDialog({
                 autoFocus
               />
               <p className="text-[11px] text-[var(--itools-muted)]">
-                Full name: SOU IEEE {newUnitShortName || "…"}{" "}
+                Full name: SOU IEEE {newUnitShortName || "..."}{" "}
                 {newUnitCategory === "SOCIETY"
                   ? "Society Chapter"
                   : newUnitCategory === "AFFINITY_GROUP"
@@ -360,7 +361,7 @@ export function AddMemberDialog({
               disabled={saving || !newUnitShortName.trim()}
               className={btnPrimary + " w-full"}
             >
-              {saving ? "Creating…" : "Create unit & continue"}
+              {saving ? "Creating..." : "Create unit & continue"}
             </Button>
           </div>
         )}
@@ -440,7 +441,7 @@ export function AddMemberDialog({
             </p>
             <DialogFooter>
               <Button type="submit" disabled={saving} className={btnPrimary}>
-                {saving ? "Adding…" : "Add member"}
+                {saving ? "Adding..." : "Add member"}
               </Button>
             </DialogFooter>
           </form>

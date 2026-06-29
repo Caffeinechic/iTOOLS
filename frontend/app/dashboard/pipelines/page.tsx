@@ -19,7 +19,10 @@ import {
 } from "@/components/ui/dialog";
 import { Layers, ArrowRight, Kanban, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageHeader, EmptyState, cardClass, btnPrimary, inputClass } from "@/components/dashboard/ui";
+import { PageHeader, EmptyState, AppSelect } from "@/components/patterns";
+import { pageStackClass, panelCardClass, btnPrimary, inputClass } from "@/lib/tokens";
+
+const cardClass = panelCardClass;
 
 export default function PipelinesPage() {
   const { pipelines, loading, fetchPipelines } = usePipelineStore();
@@ -57,9 +60,9 @@ export default function PipelinesPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className={pageStackClass}>
         <Skeleton className="h-10 w-48" />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="content-grid-wide sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className={`h-[200px] ${cardClass}`} />
           ))}
@@ -69,7 +72,7 @@ export default function PipelinesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={pageStackClass}>
       <PageHeader title="Pipelines" description="Workflow boards for events, projects, and committee operations.">
         {canCreate && (
           <Button onClick={() => setCreateOpen(true)} className={btnPrimary}>
@@ -78,7 +81,7 @@ export default function PipelinesPage() {
         )}
       </PageHeader>
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="content-grid-wide sm:grid-cols-2 lg:grid-cols-3">
         {pipelines.map((pipeline) => {
           const totalTasks = pipeline._count?.tasks || 0;
           const doneTasks = pipeline.statusCounts?.DONE || 0;
@@ -173,16 +176,20 @@ export default function PipelinesPage() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Type</Label>
-              <select value={type} onChange={(e) => setType(e.target.value)} className={`w-full ${inputClass} px-3`}>
-                <option value="GENERAL">General</option>
-                <option value="EVENT">Event</option>
-                <option value="WORKSHOP">Workshop</option>
-              </select>
+              <AppSelect
+                value={type}
+                onValueChange={setType}
+                options={[
+                  { value: "GENERAL", label: "General" },
+                  { value: "EVENT", label: "Event" },
+                  { value: "WORKSHOP", label: "Workshop" },
+                ]}
+              />
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)} className="rounded-xl">Cancel</Button>
               <Button type="submit" disabled={saving} className={btnPrimary}>
-                {saving ? "Creating…" : "Create"}
+                {saving ? "Creating..." : "Create"}
               </Button>
             </DialogFooter>
           </form>

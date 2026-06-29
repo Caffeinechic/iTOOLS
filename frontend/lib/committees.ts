@@ -24,8 +24,8 @@ export const ORG_CATEGORY_LABELS: Record<OrgPickerCategory, string> = {
 };
 
 export const ORG_CATEGORY_DESCRIPTIONS: Record<OrgPickerCategory, string> = {
-  STUDENT_BRANCH: "Main IEEE Student Branch — Chairperson, Secretary, Treasurer & more",
-  SOCIETY: "IEEE Societies — Computer Society, Signal Processing Society",
+  STUDENT_BRANCH: "Main IEEE Student Branch - Chairperson, Secretary, Treasurer and more",
+  SOCIETY: "IEEE Societies - Computer Society, Signal Processing Society",
   GROUP: "Affinity groups (WIE) & Student Branch groups (SIGHT)",
   EXECUTIVE: "Faculty executive chairs",
 };
@@ -85,6 +85,33 @@ export function roleKindForCommittee(c: Committee): "MAIN" | "CHAPTER" {
   return "CHAPTER";
 }
 
+export const MAIN_LEADERSHIP_ROLES = [
+  "Chairperson",
+  "Vice Chairperson",
+  "Secretary",
+  "Treasurer",
+  "Webmaster",
+] as const;
+
+export const CHAPTER_LEADERSHIP_ROLES = [
+  "Chapter Chairperson",
+  "Chapter Vice Chairperson",
+  "Chapter Secretary",
+  "Chapter Treasurer",
+  "Chapter Webmaster",
+] as const;
+
+const ROLE_HIERARCHY_ORDER = [
+  "Executive Chair",
+  ...MAIN_LEADERSHIP_ROLES,
+  ...CHAPTER_LEADERSHIP_ROLES,
+];
+
+export function roleHierarchyPriority(roleName: string): number {
+  const idx = ROLE_HIERARCHY_ORDER.indexOf(roleName as (typeof ROLE_HIERARCHY_ORDER)[number]);
+  return idx === -1 ? 99 : idx;
+}
+
 export const MEMBER_FILTER_TABS = [
   { id: "all", label: "All" },
   { id: "executive", label: "Executive", categories: ["EXECUTIVE"] as CommitteeCategory[] },
@@ -92,3 +119,20 @@ export const MEMBER_FILTER_TABS = [
   { id: "societies", label: "Societies", categories: ["SOCIETY"] as CommitteeCategory[] },
   { id: "groups", label: "Groups", categories: ["AFFINITY_GROUP", "GROUP"] as CommitteeCategory[] },
 ] as const;
+
+export type MemberFilterTabId = (typeof MEMBER_FILTER_TABS)[number]["id"];
+
+export function committeesForMemberFilter(
+  committees: Committee[],
+  tabId: MemberFilterTabId
+): Committee[] {
+  const tab = MEMBER_FILTER_TABS.find((t) => t.id === tabId);
+  if (!tab || tabId === "all" || !("categories" in tab)) {
+    return [...committees].sort((a, b) =>
+      committeeShortName(a).localeCompare(committeeShortName(b))
+    );
+  }
+  return committees
+    .filter((c) => tab.categories.includes(committeeCategory(c)))
+    .sort((a, b) => committeeShortName(a).localeCompare(committeeShortName(b)));
+}

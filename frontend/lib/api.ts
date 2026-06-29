@@ -34,7 +34,7 @@ export async function apiFetch<T = any>(
   }
 
   if (res.status === 401) {
-    // Token expired — redirect to login
+    // Token expired - redirect to login
     if (typeof window !== "undefined") {
       document.cookie = "access_token=; path=/; max-age=0";
       window.location.href = "/login";

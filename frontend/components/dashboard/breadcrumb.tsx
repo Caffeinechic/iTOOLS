@@ -34,17 +34,17 @@ export function DashboardBreadcrumb() {
   if (crumbs.length === 0) return null;
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-[var(--itools-muted)] mb-1">
-      <Link href="/dashboard" className="hover:text-[var(--itools-navy)] transition-colors">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+      <Link href="/dashboard" className="hover:text-brand transition-colors">
         Overview
       </Link>
       {crumbs.map((crumb, i) => (
         <span key={crumb.href} className="flex items-center gap-1">
-          <ChevronRight className="w-3 h-3 opacity-50" />
+          <ChevronRight className="w-3 h-3 opacity-40" />
           {i === crumbs.length - 1 ? (
-            <span className="text-[var(--itools-navy-deep)] font-medium">{crumb.label}</span>
+            <span className="text-brand-deep font-medium">{crumb.label}</span>
           ) : (
-            <Link href={crumb.href} className="hover:text-[var(--itools-navy)] transition-colors">
+            <Link href={crumb.href} className="hover:text-brand transition-colors">
               {crumb.label}
             </Link>
           )}

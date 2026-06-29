@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore, useBudgetStore, useNotificationStore } from "@/lib/store";
 import type { User } from "@/lib/store";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Landmark, Plus, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
-import { PageHeader, EmptyState, cardClass, btnPrimary, inputClass } from "@/components/dashboard/ui";
+import { PageTitle, EmptyState, StatCard, AppSelect } from "@/components/patterns";
+import { pageStackClass, panelCardClass, btnPrimary, inputClass } from "@/lib/tokens";
+
+const cardClass = panelCardClass;
 
 type CommitteeOption = { id: string; name: string; shortName?: string };
 
@@ -44,7 +47,6 @@ export default function BudgetPage() {
   const {
     summary,
     transactions,
-    loading,
     error,
     creating,
     reviewing,
@@ -175,9 +177,9 @@ export default function BudgetPage() {
 
   if (showSkeleton) {
     return (
-      <div className="space-y-6">
+      <div className={pageStackClass}>
         <Skeleton className="h-10 w-52" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="content-grid sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className={`h-28 ${cardClass}`} />
           ))}
@@ -188,9 +190,9 @@ export default function BudgetPage() {
 
   if (committeesError || error) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Budget & finance" description="Track allocations, expenses, and approvals." />
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+      <div className={pageStackClass}>
+        <PageTitle title="Budget & finance" />
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm text-red-700 flex items-center justify-between gap-3">
           <span>{committeesError || error || "Budget data could not be loaded."}</span>
           <Button variant="outline" size="sm" className="rounded-lg shrink-0" onClick={() => reload()}>
             Retry
@@ -212,102 +214,102 @@ export default function BudgetPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Budget & finance" description="Track allocations, expenses, reimbursements, and approval flow.">
-        <Button variant="outline" size="icon" onClick={() => reload()} className="h-9 w-9 rounded-xl border-[var(--itools-border)]">
-          <RefreshCw className="w-4 h-4 text-[var(--itools-muted)]" />
+    <div className={pageStackClass}>
+      <PageTitle title="Budget & finance">
+        <Button variant="outline" size="icon" onClick={() => reload()} className="h-9 w-9 shrink-0">
+          <RefreshCw className="w-4 h-4 text-muted-foreground" />
         </Button>
         {isLeadership && (
-          <Button variant="outline" onClick={() => setAllocOpen(true)} className="rounded-xl border-[var(--itools-border)]">
+          <Button variant="outline" onClick={() => setAllocOpen(true)} className="shrink-0">
             Set allocation
           </Button>
         )}
-        <Button onClick={() => setAddOpen(true)} className={btnPrimary}>
+        <Button onClick={() => setAddOpen(true)} variant="brand" className="shrink-0">
           <Plus className="w-4 h-4 mr-1.5" /> Add transaction
         </Button>
-      </PageHeader>
+      </PageTitle>
 
       {formError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{formError}</div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm text-red-700">{formError}</div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <select
+      <div className="page-filter-bar">
+        <AppSelect
           value={selectedCommitteeId}
-          onChange={async (e) => {
-            const id = e.target.value;
+          onValueChange={async (id) => {
             setSelectedCommitteeId(id);
             await useBudgetStore.getState().fetchBudgetData(id, "2026");
           }}
-          className={`${inputClass} px-3 w-full sm:w-[420px] text-sm`}
-        >
-          {committees.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {budgetSummary.committeeName && (
-          <p className="text-xs text-[var(--itools-muted)] self-center">FY {budgetSummary.fiscalYear}</p>
-        )}
+          options={committees.map((c) => ({ value: c.id, label: c.name }))}
+          className="w-full sm:max-w-md"
+        />
+        <span className="text-xs font-medium text-muted-foreground sm:ml-auto shrink-0">
+          FY {budgetSummary.fiscalYear}
+        </span>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Allocated" value={budgetSummary.allocated} />
-        <MetricCard title="Income" value={budgetSummary.income} />
-        <MetricCard title="Spent" value={budgetSummary.spent} />
-        <MetricCard title="Remaining" value={budgetSummary.remaining} highlight />
+      <div className="content-grid sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Allocated" value={budgetSummary.allocated} prefix="₹" />
+        <StatCard label="Income" value={budgetSummary.income} prefix="₹" />
+        <StatCard label="Spent" value={budgetSummary.spent} prefix="₹" />
+        <StatCard label="Remaining" value={budgetSummary.remaining} prefix="₹" highlight />
       </div>
 
       {isLeadership && pending.length > 0 && (
         <Card className={cardClass}>
-          <CardContent className="p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-[var(--itools-navy-deep)]">Pending approvals ({pending.length})</h3>
-            <div className="space-y-2">
-              {pending.map((txn) => (
-                <div key={txn.id} className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between rounded-xl border border-[var(--itools-border)] p-3">
+          <CardHeader className="pb-3">
+            <h3 className="text-sm font-semibold text-brand-deep">Pending approvals ({pending.length})</h3>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {pending.map((txn) => (
+              <div
+                key={txn.id}
+                className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between rounded-xl border border-border/60 p-4"
+              >
                   <div>
-                    <p className="text-sm text-[var(--itools-navy-deep)] font-medium">
+                    <p className="text-sm text-brand-deep font-medium">
                       {txn.type} · ₹{txn.amount.toLocaleString()} · {txn.category}
                     </p>
-                    <p className="text-xs text-[var(--itools-muted)]">{txn.description}</p>
-                    {txn.creator && <p className="text-[11px] text-[var(--itools-muted)]">By {txn.creator.name}</p>}
+                    <p className="text-xs text-muted-foreground">{txn.description}</p>
+                    {txn.creator && <p className="text-[11px] text-muted-foreground">By {txn.creator.name}</p>}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" disabled={reviewing} className="rounded-lg" onClick={() => handleApprove(txn.id, "REJECT")}>
+                    <Button size="sm" variant="outline" disabled={reviewing} onClick={() => handleApprove(txn.id, "REJECT")}>
                       <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
                     </Button>
-                    <Button size="sm" disabled={reviewing} className="rounded-lg bg-[var(--itools-navy)] hover:bg-[var(--itools-navy-deep)]" onClick={() => handleApprove(txn.id, "APPROVE")}>
+                    <Button size="sm" variant="brand" disabled={reviewing} onClick={() => handleApprove(txn.id, "APPROVE")}>
                       <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approve
                     </Button>
                   </div>
                 </div>
               ))}
-            </div>
           </CardContent>
         </Card>
       )}
 
       <Card className={cardClass}>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-[var(--itools-navy-deep)]">Transactions ({transactions.length})</h3>
-            <p className="text-xs text-[var(--itools-muted)]">Pending: {budgetSummary.pendingCount}</p>
-          </div>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <h3 className="text-sm font-semibold text-brand-deep">Transactions ({transactions.length})</h3>
+          <p className="text-xs text-muted-foreground">Pending: {budgetSummary.pendingCount}</p>
+        </CardHeader>
+        <CardContent>
           {recent.length === 0 ? (
             <EmptyState icon={Landmark} title="No transactions yet" description="Add your first budget transaction to start tracking." />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {recent.map((txn) => (
-                <div key={txn.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--itools-border)] p-3">
+                <div
+                  key={txn.id}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-border/60 p-4 hover:bg-secondary/35 transition-colors"
+                >
                   <div className="min-w-0">
-                    <p className="text-sm text-[var(--itools-navy-deep)] font-medium truncate">
+                    <p className="text-sm text-brand-deep font-medium truncate">
                       {txn.type} · {txn.category}
                     </p>
-                    <p className="text-xs text-[var(--itools-muted)] truncate">{txn.description}</p>
+                    <p className="text-xs text-muted-foreground truncate">{txn.description}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold text-[var(--itools-navy-deep)]">₹{txn.amount.toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-brand-deep tabular-nums">₹{txn.amount.toLocaleString()}</p>
                     <Badge variant="outline" className={`text-[10px] ${statusClass(txn.status)}`}>
                       {txn.status}
                     </Badge>
@@ -320,27 +322,27 @@ export default function BudgetPage() {
       </Card>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="rounded-2xl border-[var(--itools-border)]">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-[var(--itools-navy-deep)]">Add transaction</DialogTitle>
+            <DialogTitle>Add transaction</DialogTitle>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleAdd}>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Type</Label>
-                <select value={type} onChange={(e) => setType(e.target.value as (typeof TYPES)[number])} className={`w-full ${inputClass} px-3`}>
-                  {TYPES.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </select>
+                <AppSelect
+                  value={type}
+                  onValueChange={(v) => setType(v as (typeof TYPES)[number])}
+                  options={TYPES.map((item) => ({ value: item, label: item }))}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Category</Label>
-                <select value={category} onChange={(e) => setCategory(e.target.value as (typeof CATEGORIES)[number])} className={`w-full ${inputClass} px-3`}>
-                  {CATEGORIES.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </select>
+                <AppSelect
+                  value={category}
+                  onValueChange={(v) => setCategory(v as (typeof CATEGORIES)[number])}
+                  options={CATEGORIES.map((item) => ({ value: item, label: item }))}
+                />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -360,12 +362,12 @@ export default function BudgetPage() {
       </Dialog>
 
       <Dialog open={allocOpen} onOpenChange={setAllocOpen}>
-        <DialogContent className="rounded-2xl border-[var(--itools-border)]">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-[var(--itools-navy-deep)]">Set annual allocation</DialogTitle>
+            <DialogTitle>Set annual allocation</DialogTitle>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleSetAllocation}>
-            <p className="text-sm text-[var(--itools-muted)]">{budgetSummary.committeeName} · FY 2026</p>
+            <p className="text-sm text-muted-foreground">{budgetSummary.committeeName} · FY 2026</p>
             <div className="space-y-1.5">
               <Label>Allocated amount (₹)</Label>
               <Input value={allocAmount} onChange={(e) => setAllocAmount(e.target.value)} type="number" min="0" className={inputClass} required />
@@ -378,17 +380,6 @@ export default function BudgetPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function MetricCard({ title, value, highlight = false }: { title: string; value: number; highlight?: boolean }) {
-  return (
-    <Card className={`${cardClass} ${highlight ? "border-[var(--itools-navy)]/30" : ""}`}>
-      <CardContent className="p-4">
-        <p className="text-xs text-[var(--itools-muted)]">{title}</p>
-        <p className="mt-1 text-xl font-semibold text-[var(--itools-navy-deep)]">₹{value.toLocaleString()}</p>
-      </CardContent>
-    </Card>
   );
 }
 

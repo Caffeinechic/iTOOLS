@@ -5,21 +5,15 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PageHeader, EmptyState, cardClass } from "@/components/dashboard/ui";
-import { useStatsStore, useNotificationStore, usePipelineStore } from "@/lib/store";
-import {
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  ListTodo,
-  ArrowRight,
-  Megaphone,
-  Columns3,
-  Users,
-  Bell,
-} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState, StatCard } from "@/components/patterns";
+import { pageStackClass, panelCardClass } from "@/lib/tokens";
+import { useStatsStore, useNotificationStore, usePipelineStore, useAuthStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { ArrowRight, Columns3, Bell, ListTodo, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function DashboardOverviewPage() {
+  const { user } = useAuthStore();
   const { stats, loading, fetchStats } = useStatsStore();
   const { notifications, fetchNotifications } = useNotificationStore();
   const { pipelines, fetchPipelines } = usePipelineStore();
@@ -30,13 +24,15 @@ export default function DashboardOverviewPage() {
     fetchPipelines();
   }, [fetchStats, fetchNotifications, fetchPipelines]);
 
+  const firstName = user?.name?.split(" ")[0];
+
   if (loading || !stats) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-10 w-48 bg-[var(--itools-border)] rounded-lg" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={pageStackClass}>
+        <Skeleton className="h-8 w-48 rounded-2xl lg:hidden" />
+        <div className="content-grid sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className={`h-28 ${cardClass}`} />
+            <Skeleton key={i} className="h-32 rounded-2xl" />
           ))}
         </div>
       </div>
@@ -47,102 +43,66 @@ export default function DashboardOverviewPage() {
     { title: "Total tasks", value: stats.total, icon: ListTodo },
     { title: "In progress", value: stats.inProgress + stats.review, icon: Clock },
     { title: "Completed", value: stats.done, icon: CheckCircle2 },
-    { title: "Overdue", value: stats.overdue, icon: AlertCircle, alert: stats.overdue > 0 },
-  ];
-
-  const quickLinks = [
-    { href: "/dashboard/pipelines", label: "Pipelines", icon: Columns3 },
-    { href: "/dashboard/members", label: "Members", icon: Users },
-    { href: "/dashboard/communications", label: "Communications", icon: Megaphone },
-    { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
+    { title: "Overdue", value: stats.overdue, icon: AlertCircle, highlight: stats.overdue > 0 },
   ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Overview"
-        description="Committee activity, tasks, and recent updates in one place."
-      />
+    <div className={pageStackClass}>
+      <div className="sm:hidden">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Overview</p>
+        <h2 className="text-2xl font-semibold text-brand-deep font-display mt-1.5">
+          {firstName ? `Hi, ${firstName}` : "Overview"}
+        </h2>
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="content-grid sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className={cardClass}>
-            <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0">
-              <CardTitle className="text-xs font-medium text-[var(--itools-muted)]">
-                {stat.title}
-              </CardTitle>
-              <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  stat.alert ? "bg-red-50 text-red-600" : "bg-[var(--itools-surface)] text-[var(--itools-navy)]"
-                }`}
-              >
-                <stat.icon className="h-4 w-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-[var(--itools-navy-deep)] font-[family-name:var(--font-display)]">
-                {stat.value}
-              </p>
-            </CardContent>
-          </Card>
+          <StatCard
+            key={stat.title}
+            label={stat.title}
+            value={stat.value}
+            icon={stat.icon}
+            highlight={stat.highlight}
+          />
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {quickLinks.map((link) => (
-          <Link key={link.href} href={link.href}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl border-[var(--itools-border)] text-[var(--itools-navy-deep)] hover:bg-[var(--itools-surface)] h-9 gap-2"
-            >
-              <link.icon className="w-3.5 h-3.5" />
-              {link.label}
-            </Button>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className={cardClass}>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold text-[var(--itools-navy-deep)] font-[family-name:var(--font-display)]">
-                Active pipelines
-              </CardTitle>
-              <p className="text-xs text-[var(--itools-muted)] mt-0.5">Open workflows</p>
-            </div>
+      <div className="content-grid-wide lg:grid-cols-2">
+        <Card className={cn(panelCardClass, "overflow-hidden border-0 shadow-none")}>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base font-semibold text-brand-deep font-display">
+              Pipelines
+            </CardTitle>
             <Link href="/dashboard/pipelines">
-              <Button variant="ghost" size="sm" className="text-xs text-[var(--itools-navy)] h-8">
+              <Button variant="ghost" size="sm" className="h-8 rounded-full text-xs text-muted-foreground -mr-1">
                 View all <ArrowRight className="w-3 h-3 ml-1" />
               </Button>
             </Link>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2.5">
             {pipelines.slice(0, 4).map((p) => {
               const total = p._count?.tasks || 0;
               const done = p.statusCounts?.DONE || 0;
               const pct = total > 0 ? Math.round((done / total) * 100) : 0;
               return (
                 <Link key={p.id} href={`/dashboard/pipelines/${p.id}`} className="block group">
-                  <div className="p-3 rounded-xl border border-[var(--itools-border)] hover:border-[var(--itools-navy)]/30 hover:bg-[var(--itools-surface)] transition-colors">
-                    <div className="flex items-center justify-between gap-3 mb-2">
-                      <p className="text-sm font-medium text-[var(--itools-navy-deep)] truncate group-hover:text-[var(--itools-navy)]">
-                        {p.title}
-                      </p>
-                      <Badge variant="secondary" className="text-[10px] shrink-0 uppercase">
+                  <div className="p-4 rounded-2xl bg-secondary/35 border border-transparent hover:border-border/70 hover:bg-secondary/55 transition-all">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <p className="text-sm font-medium text-brand-deep truncate">{p.title}</p>
+                      <Badge variant="secondary" className="text-[10px] shrink-0 rounded-full">
                         {p.type}
                       </Badge>
                     </div>
-                    <div className="flex justify-between text-[11px] text-[var(--itools-muted)] mb-1.5">
-                      <span>{total} tasks</span>
-                      <span>{pct}% complete</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-[var(--itools-surface)] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[var(--itools-navy)] rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
+                    <div className="flex items-center gap-3">
+                      <div className="h-1.5 flex-1 bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-brand-accent transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-muted-foreground tabular-nums w-8 text-right">
+                        {pct}%
+                      </span>
                     </div>
                   </div>
                 </Link>
@@ -152,11 +112,10 @@ export default function DashboardOverviewPage() {
               <EmptyState
                 icon={Columns3}
                 title="No pipelines yet"
-                description="Create a workflow to start tracking committee tasks."
                 action={
                   <Link href="/dashboard/pipelines">
-                    <Button className="bg-[var(--itools-navy)] hover:bg-[var(--itools-navy-deep)] rounded-xl">
-                      Go to pipelines
+                    <Button variant="brand" size="sm">
+                      Open pipelines
                     </Button>
                   </Link>
                 }
@@ -165,33 +124,33 @@ export default function DashboardOverviewPage() {
           </CardContent>
         </Card>
 
-        <Card className={cardClass}>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold text-[var(--itools-navy-deep)] font-[family-name:var(--font-display)]">
-                Recent activity
-              </CardTitle>
-              <p className="text-xs text-[var(--itools-muted)] mt-0.5">Latest notifications</p>
-            </div>
+        <Card className={cn(panelCardClass, "overflow-hidden border-0 shadow-none")}>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base font-semibold text-brand-deep font-display">
+              Recent activity
+            </CardTitle>
             <Link href="/dashboard/notifications">
-              <Button variant="ghost" size="sm" className="text-xs text-[var(--itools-navy)] h-8">
+              <Button variant="ghost" size="sm" className="h-8 rounded-full text-xs text-muted-foreground -mr-1">
                 View all <ArrowRight className="w-3 h-3 ml-1" />
               </Button>
             </Link>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-[320px] overflow-auto pr-1">
-              {notifications.slice(0, 6).map((notif) => (
+            <div className="space-y-2.5 max-h-[320px] overflow-auto scrollbar-subtle pr-1">
+              {notifications.slice(0, 5).map((notif) => (
                 <div
                   key={notif.id}
-                  className={`p-3 rounded-xl border transition-colors ${
+                  className={cn(
+                    "p-4 rounded-2xl text-sm transition-colors",
                     notif.isRead
-                      ? "border-[var(--itools-border)] bg-[var(--itools-surface)]/40"
-                      : "border-[var(--itools-navy)]/20 bg-white"
-                  }`}
+                      ? "bg-secondary/30 text-muted-foreground"
+                      : "bg-card border border-border/60 shadow-sm"
+                  )}
                 >
-                  <p className="text-sm text-[var(--itools-navy-deep)] line-clamp-2">{notif.message}</p>
-                  <p className="text-[11px] text-[var(--itools-muted)] mt-1">
+                  <p className={cn("line-clamp-2 leading-relaxed", !notif.isRead && "text-brand-deep font-medium")}>
+                    {notif.message}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-2">
                     {new Date(notif.sentAt).toLocaleString([], {
                       month: "short",
                       day: "numeric",
@@ -202,7 +161,7 @@ export default function DashboardOverviewPage() {
                 </div>
               ))}
               {notifications.length === 0 && (
-                <EmptyState icon={Bell} title="No recent activity" description="Updates will appear here." />
+                <EmptyState icon={Bell} title="All caught up" description="No new notifications." />
               )}
             </div>
           </CardContent>

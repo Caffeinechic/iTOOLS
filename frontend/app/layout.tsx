@@ -15,7 +15,7 @@ const body = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "iTools - Executive Committee Operating System",
+  title: "iTOOLS - Executive Committee Operating System",
   description: "Designed for Silver Oak University IEEE Student Branches",
 };
 

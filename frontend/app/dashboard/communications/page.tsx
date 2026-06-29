@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PageHeader, btnPrimary, cardClass, inputClass, EmptyState } from "@/components/dashboard/ui";
+import { AppSelect } from "@/components/patterns";
 
 const TABS = [
   { id: "ANNOUNCEMENT", label: "Announcements", icon: Megaphone },
@@ -145,16 +146,16 @@ function CreateDialog({
             </div>
           )}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-[var(--itools-muted)]">Type</Label>
-            <select
+            <Label className="text-xs font-medium text-muted-foreground">Type</Label>
+            <AppSelect
               value={type}
-              onChange={(e) => setType(e.target.value)}
-              className={`w-full ${inputClass} px-3 py-2 text-sm`}
-            >
-              <option value="ANNOUNCEMENT">Announcement</option>
-              <option value="MEETING_MINUTES">Meeting Minutes</option>
-              <option value="DISCUSSION">Discussion</option>
-            </select>
+              onValueChange={setType}
+              options={[
+                { value: "ANNOUNCEMENT", label: "Announcement" },
+                { value: "MEETING_MINUTES", label: "Meeting Minutes" },
+                { value: "DISCUSSION", label: "Discussion" },
+              ]}
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-[var(--itools-muted)]">Title</Label>
@@ -172,16 +173,16 @@ function CreateDialog({
           )}
           {type === "ANNOUNCEMENT" && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-[var(--itools-muted)]">Priority</Label>
-              <select
+              <Label className="text-xs font-medium text-muted-foreground">Priority</Label>
+              <AppSelect
                 value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className={`w-full ${inputClass} px-3 py-2 text-sm`}
-              >
-                <option value="NORMAL">Normal</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
+                onValueChange={setPriority}
+                options={[
+                  { value: "NORMAL", label: "Normal" },
+                  { value: "HIGH", label: "High" },
+                  { value: "URGENT", label: "Urgent" },
+                ]}
+              />
             </div>
           )}
           <DialogFooter>
